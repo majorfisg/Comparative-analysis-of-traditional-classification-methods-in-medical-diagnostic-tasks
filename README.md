@@ -1,0 +1,2 @@
+# Comparative-analysis-of-traditional-classification-methods-in-medical-diagnostic-tasks
+The goal is to compare standard methods with cross-validation. Applied Research - Data Science and Machine Learning. As a result of the study, several standard methods were chosen for further work. After applying these methods, we must calculate their accuracy and build graphs, all this is necessary for further comparison with cross-validation.
