@@ -158,3 +158,40 @@ for i, clf in zip(names, classifiers):
     
     
 pprint(cross_validation_acc)
+
+#Сравнение точности кроссвалидации и обычного классификатора
+plt.bar(np.arange(len(cross_validation_acc)), cross_validation_acc.values(), width=0.3, 
+        yerr=np.std(list(cross_validation_acc.values())))
+plt.bar(np.arange(len(total_accuracy_test))+0.3, total_accuracy_test, width=0.3,
+        yerr=np.std(total_accuracy_test))
+plt.xticks(np.arange(len(names))+0.3, names);
+
+#Строим столбчатую диаграмму точности и дисперсии
+plt.ylim((0, 1))
+plt.xlim(-0.3, 4.3)
+bw = 0.3
+
+# Рисуем график
+plt.bar(np.arange(len(cross_validation_acc)), cross_validation_acc.values(), width=bw)
+
+# Чертим прямую линию по максимальной оценке точности
+plt.plot([-1, 5], [max(cross_validation_acc.values()), 
+                   max(cross_validation_acc.values())], c='red', alpha=0.4)
+
+plt.xticks(np.arange(len(names)), names);
+plt.title('Усредненная точность. Число разбиений: %i'%num_of_folds)
+
+#Строим ROC-кривую, подсчитываем площадь под ней (AUC)
+for i, j in zip(names, classifiers):
+    j.fit(x_train, y_train)
+    fpr, tpr, treshoulds = roc_curve(y_test, j.predict_proba(x_test)[:, 1])
+    plt.plot(fpr, tpr, label='%s: auc=%0.2f'%(i, auc(fpr, tpr)))
+    print('Method: %s, ' %i, 'auc: %.3f'%auc(fpr, tpr))
+
+plt.plot([0, 1], [0, 1], '--', c='gray', alpha=0.2)
+
+plt.ylabel('TPR')
+plt.xlabel('FPR')
+plt.title('ROC-кривые для рассмотренных моделей')
+
+plt.legend()
