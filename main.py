@@ -46,4 +46,115 @@ df = df.replace('?', 0, method='ffill')
 # Загрузка diabets
 # df = pd.read_csv('diabets.csv', sep=',')
 
-df.head()
+
+# Разделяем на обучающую и тестовую выборки для первой части (до использования cross val score)
+#df.iloc[:, :-1], df.iloc[:, -1] – правильно настроить столбец с метками классов
+x_train, x_test, y_train, y_test = train_test_split(df.iloc[:, :-1], df.iloc[:, -1], 
+                                                    test_size = 0.5, random_state=1121, 
+                                                    shuffle=True)
+
+#Обычная оценка точности
+#LogisticRegression
+log = LogisticRegression()
+log.fit(x_train, y_train)
+
+acc_log_train = accuracy_score(y_train, log.predict(x_train))
+acc_log_test = accuracy_score(y_test, log.predict(x_test))
+
+#KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(x_train, y_train)
+acc_knn_train = accuracy_score(y_train, knn.predict(x_train))
+acc_knn_test = accuracy_score(y_test, knn.predict(x_test))
+
+#RandomForestClassifier
+rfc = RandomForestClassifier(max_depth=2)
+rfc.fit(x_train, y_train)
+acc_rfc_train = accuracy_score(y_train, rfc.predict(x_train))
+acc_rfc_test = accuracy_score(y_test, rfc.predict(x_test))
+
+#GaussianNB
+gnb = GaussianNB()
+gnb.fit(x_train, y_train)
+acc_gnb_train = accuracy_score(y_train, gnb.predict(x_train))
+acc_gnb_test = accuracy_score(y_test, gnb.predict(x_test))
+#VotingClassifier
+ens = VotingClassifier([('LogR', LogisticRegression()), 
+                        ('NaiveBayes',GaussianNB()), 
+                        ('kNN', KNeighborsClassifier(n_neighbors=11)),
+                        ('RandomForest', RandomForestClassifier(max_depth=2))], 
+                        voting='soft', weights=[1, 1, 1, 1])
+ens.fit(x_train, y_train)
+
+acc_ens_train = accuracy_score(y_train, ens.predict(x_train))
+acc_ens_test = accuracy_score(y_test, ens.predict(x_test))
+
+#Строим столбчатую диаграмму для подсчитанных оценок
+
+bar_width = 0.3 # Ширина столбца диаграммы
+position = np.arange(5) # Указываем число позиций на диаграмме: 4 классификатора – 4 позиции
+
+# Записываем в списки оценки точности, которые были получены выше
+total_accuracy_train = [acc_log_train, acc_knn_train, 
+                        acc_rfc_train, acc_gnb_train,
+                        acc_ens_train] # Точность на обучении
+total_accuracy_test = [acc_log_test, acc_knn_test, 
+                       acc_rfc_test, acc_gnb_test,
+                       acc_ens_test] # Точность на тесте
+
+# Строим графики
+
+plt.bar(position, total_accuracy_train, width = bar_width, 
+        label='Обучающая выборка', align='center')
+plt.bar(position+bar_width, total_accuracy_test, width=bar_width, 
+        label='Тестовая выборка')
+# Подписываем
+plt.xticks(position+bar_width/2, ['LogR', 'KNN', 'RandomForest', 'GaussianNB', 'Ensemble'])
+plt.ylabel('Точность')
+
+
+plt.ylim((0, 1.1)) # Редактируем вертикальную ось
+plt.legend(loc=1) # Указываем позицию легенды
+plt.title('Точность классификации на обучающем и тестовом множестве'); # Печатаем заголовок
+
+
+#Кросс-валидация
+#Применяем кросс-валидацию: считаем оценки точности на количестве разбиений выборки num_of_folds, оцениваем дисперсию оценок
+# Создаем список классификаторов
+classifiers = [LogisticRegression(), GaussianNB(), 
+               KNeighborsClassifier(), RandomForestClassifier(n_estimators=16, max_features=1), 
+               VotingClassifier([('LogR', LogisticRegression()), 
+                                 ('NaiveBayes',GaussianNB()), 
+                                 ('kNN', KNeighborsClassifier(n_neighbors=11)),
+                                 ('RandomForest', RandomForestClassifier(max_depth=2))], 
+                                 voting='soft', 
+                                 weights=[1, 2, 1, 1])]
+
+# Создаем список имен для отображения на диаграммах
+names = ['Logistic Regr', 'GaussianNB', 'KNN', 'RandomForest', 'Ensemble']
+
+# Число блоков для кросс-валидации
+num_of_folds = 100
+
+###### Создаем словари для обучающей и тестовой выборок:
+### Словарь, содержащий оценку точности на обуч. выборке для различных классификаторов  
+cross_validation_acc = {} 
+### Словарь, содержащий оценку дисперсии оценки точности на обуч. 
+###выборке для различных классификаторов  
+cross_validation_var = {} 
+
+
+
+# В цикле по классификаторам проводим обучение, на кроссвалидации заполняем словари 
+for i, clf in zip(names, classifiers):
+    cross_validation_scores = cross_val_score(clf, df.iloc[:, :-1], 
+                                              df.iloc[:, -1], cv=num_of_folds)
+    # Средняя оценка точности на num_of_folds подвыборках
+    cross_validation_acc[i] = cross_validation_scores.mean()
+    
+    # Средняя оценка дисперсии на num_of_folds подвыборках
+    cross_validation_var[i] = cross_validation_scores.var()
+    
+    
+    
+pprint(cross_validation_acc)
